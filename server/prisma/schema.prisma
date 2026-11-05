@@ -1,0 +1,187 @@
+// Digital Legacy Manager — data model
+// SQLite is used for zero-setup local development. To use PostgreSQL in
+// production, change `provider` to "postgresql" and point DATABASE_URL at it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A registered person. The same account can own a vault AND be a nominee
+/// in somebody else's vault.
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  phone        String?
+  passwordHash String
+  /// Incremented on password change / "log out everywhere" to invalidate old sessions.
+  tokenVersion Int     @default(0)
+
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+
+  // ---- Proof-of-life ("check-in") settings ----
+  checkInIntervalDays Int       @default(30)
+  gracePeriodDays     Int       @default(7)
+  lastCheckInAt       DateTime  @default(now())
+  /// ACTIVE | REMINDED | GRACE | RELEASED
+  legacyStatus        String    @default("ACTIVE")
+  statusChangedAt     DateTime  @default(now())
+  /// When the grace period ends and the vault is released to nominees.
+  graceEndsAt         DateTime?
+  statusReason        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets    Asset[]
+  documents Document[]
+  letters   Letter[]
+  nominees  Nominee[]     @relation("OwnerNominees")
+  nomineeOf Nominee[]     @relation("NomineeUser")
+  auditLogs AuditLog[]
+  tokens    ActionToken[]
+}
+
+/// A trusted person chosen by an owner to receive some of their items.
+model Nominee {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation("OwnerNominees", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Linked once the nominee accepts the invitation and signs in.
+  userId       String?
+  user         User?     @relation("NomineeUser", fields: [userId], references: [id], onDelete: SetNull)
+  name         String
+  email        String
+  phone        String?
+  relationship String
+  /// INVITED | ACCEPTED | DECLINED
+  status       String    @default("INVITED")
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assetShares    AssetShare[]
+  documentShares DocumentShare[]
+  letters        Letter[]
+  tokens         ActionToken[]
+
+  @@unique([ownerId, email])
+}
+
+/// Anything of value: bank account, email, insurance, property, etc.
+model Asset {
+  id             String   @id @default(cuid())
+  ownerId        String
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  /// BANK | EMAIL | SOCIAL | INSURANCE | INVESTMENT | PROPERTY | DEVICE | OTHER
+  category       String
+  title          String
+  institution    String?
+  /// Non-sensitive hint such as "ending 4321". Never the full number.
+  identifierHint String?
+  /// AES-256-GCM encrypted JSON { username, password, notes }.
+  secretEnc      String?
+  /// Plain-language wishes: "Close this account and give money to Priya".
+  instructions   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shares AssetShare[]
+}
+
+model AssetShare {
+  assetId   String
+  nomineeId String
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  nominee   Nominee @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, nomineeId])
+}
+
+/// An uploaded file (will, property papers, policy). Stored encrypted on disk.
+model Document {
+  id           String   @id @default(cuid())
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title        String
+  /// WILL | PROPERTY | INSURANCE | IDENTITY | FINANCE | MEDICAL | OTHER
+  category     String
+  originalName String
+  mimeType     String
+  size         Int
+  storageKey   String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shares DocumentShare[]
+}
+
+model DocumentShare {
+  documentId String
+  nomineeId  String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  nominee    Nominee  @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, nomineeId])
+}
+
+/// A personal message delivered to one nominee after release.
+model Letter {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  nomineeId String
+  nominee   Nominee  @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+  subject   String
+  /// AES-256-GCM encrypted message body.
+  bodyEnc   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Single-use tokens sent by email (password reset, check-in link, nominee invite).
+/// Only a SHA-256 hash of the token is stored.
+model ActionToken {
+  id        String    @id @default(cuid())
+  /// RESET_PASSWORD | CHECK_IN | NOMINEE_INVITE
+  type      String
+  tokenHash String    @unique
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nomineeId String?
+  nominee   Nominee?  @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+/// Tamper-evident history of everything that happens in a vault.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Every email the system sends. In development this doubles as an
+/// inbox you can read at /dev/mailbox without configuring SMTP.
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  text      String
+  link      String?
+  delivered Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
