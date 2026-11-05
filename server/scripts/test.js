@@ -26,7 +26,7 @@ for (const f of [testDb, `${testDb}-journal`]) fs.rmSync(f, { force: true });
 fs.rmSync(path.join(root, 'test-storage'), { recursive: true, force: true });
 execSync('npx prisma migrate deploy', { cwd: root, env, stdio: 'ignore' });
 try {
-  execSync('node --test --test-concurrency=1 "tests/**/*.test.js"', { cwd: root, env, stdio: 'inherit' });
+  execSync('node --test --test-concurrency=1 --test-timeout=20000 --test-force-exit "tests/**/*.test.js"', { cwd: root, env, stdio: 'inherit' });
 } finally {
   fs.rmSync(path.join(root, 'test-storage'), { recursive: true, force: true });
 }
