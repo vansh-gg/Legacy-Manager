@@ -27,6 +27,9 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   }
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = isJson ? await res.json() : null;
+  if (!res.ok && !isJson && res.status >= 500) {
+    throw new ApiError('The service is not responding right now. Please try again in a minute.', res.status);
+  }
   if (!res.ok) {
     if (res.status === 401 && !path.startsWith('/auth/login')) window.dispatchEvent(new Event('dlm:unauthorized'));
     throw new ApiError(data?.error || 'Something went wrong. Please try again.', res.status, data);

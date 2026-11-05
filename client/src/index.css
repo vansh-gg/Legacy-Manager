@@ -26,30 +26,33 @@
   --color-danger-soft: #fde9e7;
 }
 
-html {
-  font-size: calc(18px * var(--text-scale, 1));
-  -webkit-text-size-adjust: 100%;
+/* Base styles live in the base layer so Tailwind utility classes can override them. */
+@layer base {
+  html {
+    font-size: calc(18px * var(--text-scale, 1));
+    -webkit-text-size-adjust: 100%;
+  }
+  html[data-text-size="large"] { --text-scale: 1.15; }
+  html[data-text-size="xlarge"] { --text-scale: 1.3; }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+
+  :focus-visible {
+    outline: 3px solid #f59e0b;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  a { color: var(--color-brand); }
+
+  dialog::backdrop { background: rgb(15 23 42 / 0.55); }
 }
-html[data-text-size="large"] { --text-scale: 1.15; }
-html[data-text-size="xlarge"] { --text-scale: 1.3; }
-
-body {
-  margin: 0;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  line-height: 1.6;
-}
-
-:focus-visible {
-  outline: 3px solid #f59e0b;
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-a { color: var(--color-brand); }
-
-dialog::backdrop { background: rgb(15 23 42 / 0.55); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

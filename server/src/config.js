@@ -25,7 +25,8 @@ export const config = {
   env,
   isProd,
   isTest: env === 'test',
-  port: Number(process.env.PORT || 4000),
+  // API_PORT wins so the API never collides with a front-end dev server's PORT.
+  port: Number(process.env.API_PORT || process.env.PORT || 4000),
   jwtSecret: required('JWT_SECRET'),
   encryptionKey: required('ENCRYPTION_KEY'),
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
