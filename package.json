@@ -1,0 +1,24 @@
+{
+  "name": "digital-legacy-manager",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A secure, elderly-friendly digital will: organise your accounts, documents and wishes, and pass them safely to the people you trust.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "setup": "npm run setup -w server",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "seed": "npm run seed -w server",
+    "test": "npm test -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  }
+}

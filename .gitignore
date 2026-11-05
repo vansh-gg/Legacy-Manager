@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+client/dist/
+
+# Environment & secrets (never commit these)
+.env
+.env.*
+!.env.example
+
+# Local database and encrypted file storage
+server/prisma/*.db
+server/prisma/*.db-journal
+server/storage/
+server/test-storage/
+
+# Logs / OS / editor
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+coverage/
